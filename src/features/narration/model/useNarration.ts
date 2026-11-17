@@ -55,5 +55,16 @@ export function useNarration(onEnd: () => void) {
     toggle: () => setState((s) => ({ ...s, playing: !s.playing })),
     seek: (elapsed: number) => setState((s) => ({ ...s, elapsed })),
     rate: (rate: number) => setState((s) => ({ ...s, rate })),
+    restore: (r: { artworkId: string; elapsed: number; rate: number }) => {
+      stopSpeech();
+      const a = artworkById(r.artworkId);
+      setState((s) => ({
+        ...s,
+        artworkId: r.artworkId,
+        elapsed: Math.min(Math.max(0, r.elapsed), a?.duration ?? 0),
+        playing: false,
+        rate: r.rate,
+      }));
+    },
   };
 }

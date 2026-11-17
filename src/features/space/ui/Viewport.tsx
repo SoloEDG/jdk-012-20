@@ -6,14 +6,22 @@ export function Viewport({
   position,
   yaw,
   onSelect,
+  onReady,
+  onUserInput,
 }: {
   position: React.RefObject<Point>;
   yaw: React.RefObject<number>;
   onSelect: (id: string) => void;
+  onReady?: () => void;
+  onUserInput?: () => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const select = useRef(onSelect);
   select.current = onSelect;
+  const ready = useRef(onReady);
+  ready.current = onReady;
+  const userInput = useRef(onUserInput);
+  userInput.current = onUserInput;
   const [error, setError] = useState("");
   useEffect(() => {
     const el = root.current!;
@@ -22,6 +30,7 @@ export function Viewport({
       renderer = new THREE.WebGLRenderer({ antialias: true });
     } catch {
       setError("当前设备无法启动三维画面，可继续通过作品列表参观。");
+      ready.current?.();
       return;
     }
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -38,6 +47,7 @@ export function Viewport({
     observer.observe(el);
     resize();
     let frame = 0;
+    let firstFrame = true;
     let dragging = false,
       moved = 0,
       last = 0;
@@ -53,6 +63,7 @@ export function Viewport({
         yaw.current -= delta * 0.005;
         moved += Math.abs(delta);
         last = e.clientX;
+        if (delta !== 0) userInput.current?.();
       }
     };
     const up = (e: PointerEvent) => {
@@ -79,6 +90,10 @@ export function Viewport({
       camera.rotation.set(-0.03, yaw.current, 0);
       sculpture.rotation.y = now * 0.00015;
       renderer.render(scene, camera);
+      if (firstFrame) {
+        firstFrame = false;
+        ready.current?.();
+      }
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);

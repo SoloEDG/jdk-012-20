@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   ArrowUpRight,
   Heart,
+  History,
   Maximize,
   MapPin,
   Volume2,
@@ -15,6 +16,7 @@ import { ArtworkList, ArtworkDetail } from "../features/catalog";
 import { TourPanel } from "../features/tours";
 import { AudioPlayer } from "../features/narration";
 import { CollectionPanel } from "../features/collection";
+import { ResumeDialog } from "../features/session";
 import { artworks, artworkById } from "../shared/catalog";
 import { useGallery } from "./useGallery";
 export default function App() {
@@ -102,20 +104,20 @@ export default function App() {
             </button>
           </div>
           {side === "works" ? (
-            <ArtworkList active={g.catalog.active} onSelect={g.go} />
+            <ArtworkList active={g.catalog.active} onSelect={g.goUser} />
           ) : (
             <Map
               position={g.walker.position}
               active={g.catalog.active}
-              onSelect={g.go}
+              onSelect={g.goUser}
               large
             />
           )}
           <TourPanel
             state={g.tour.state}
-            onStart={g.tour.start}
+            onStart={g.tourStart}
             onPause={g.pauseTour}
-            onResume={g.tour.resume}
+            onResume={g.tourResume}
             onStop={g.stopTour}
             onNext={g.nextTour}
           />
@@ -141,25 +143,38 @@ export default function App() {
             <Viewport
               position={g.walker.positionRef}
               yaw={g.walker.yaw}
-              onSelect={g.go}
+              onSelect={g.goUser}
+              onReady={g.onViewportReady}
+              onUserInput={g.onSceneInput}
             />
             <div className="scene-top">
               <span>
                 <span className="live-dot" />
                 自由探索中
               </span>
-              <button
-                className="glass-button"
-                aria-label="全屏展馆"
-                onClick={() => {
-                  const el = document.querySelector(".scene-wrap");
-                  if (document.fullscreenElement)
-                    void document.exitFullscreen();
-                  else void el?.requestFullscreen();
-                }}
-              >
-                <Maximize size={16} />
-              </button>
+              <span className="scene-top-actions">
+                {g.session.canReopen && (
+                  <button
+                    className="resume-entry"
+                    onClick={g.session.reopen}
+                  >
+                    <History size={14} />
+                    恢复上次参观
+                  </button>
+                )}
+                <button
+                  className="glass-button"
+                  aria-label="全屏展馆"
+                  onClick={() => {
+                    const el = document.querySelector(".scene-wrap");
+                    if (document.fullscreenElement)
+                      void document.exitFullscreen();
+                    else void el?.requestFullscreen();
+                  }}
+                >
+                  <Maximize size={16} />
+                </button>
+              </span>
             </div>
             <div className="center-cross">+</div>
             <div className="scene-location">
@@ -185,7 +200,7 @@ export default function App() {
               <Map
                 position={g.walker.position}
                 active={g.catalog.active}
-                onSelect={g.go}
+                onSelect={g.goUser}
               />
             </div>
             <div className="scene-controls">
@@ -219,7 +234,7 @@ export default function App() {
             </div>
             <button
               onClick={() => {
-                g.tour.start("nature");
+                g.tourStart("nature");
                 setTab("journeys");
               }}
             >
@@ -228,7 +243,7 @@ export default function App() {
           </div>
           <div className="art-tags">
             {artworks.slice(0, 3).map((art, i) => (
-              <button key={art.id} onClick={() => g.go(art.id)}>
+              <button key={art.id} onClick={() => g.goUser(art.id)}>
                 <span style={{ background: art.color }} />0{i + 1} · {art.title}
                 <ArrowUpRight size={14} />
               </button>
@@ -239,7 +254,7 @@ export default function App() {
           {tab === "collection" ? (
             <CollectionPanel
               document={g.collection.document}
-              onSelect={g.go}
+              onSelect={g.goUser}
               onNote={g.collection.note}
               onToggle={g.collection.toggle}
             />
@@ -252,9 +267,9 @@ export default function App() {
               </div>
               <TourPanel
                 state={g.tour.state}
-                onStart={g.tour.start}
+                onStart={g.tourStart}
                 onPause={g.pauseTour}
-                onResume={g.tour.resume}
+                onResume={g.tourResume}
                 onStop={g.stopTour}
                 onNext={g.nextTour}
               />
@@ -269,10 +284,10 @@ export default function App() {
                 if (g.catalog.active) g.collection.toggle(g.catalog.active);
               }}
               onListen={() => {
-                if (g.catalog.active) g.narration.play(g.catalog.active);
+                if (g.catalog.active) g.narrationPlay(g.catalog.active);
               }}
               onGo={() => {
-                if (g.catalog.active) g.go(g.catalog.active);
+                if (g.catalog.active) g.goUser(g.catalog.active);
               }}
             />
           )}
@@ -296,9 +311,19 @@ export default function App() {
         state={g.narration.state}
         caption={g.narration.caption}
         supported={g.narration.supported}
-        onToggle={g.narration.toggle}
-        onSeek={g.narration.seek}
-        onRate={g.narration.rate}
+        onToggle={g.narrationToggle}
+        onSeek={g.narrationSeek}
+        onRate={g.narrationRate}
+      />
+      <ResumeDialog
+        status={g.session.status}
+        stages={g.session.stages}
+        stageIndex={g.session.stageIndex}
+        summary={g.session.summary}
+        issues={g.session.issues}
+        onResume={g.session.resume}
+        onFresh={g.session.settleFresh}
+        onSkip={g.cancelRestore}
       />
       {(mapOpen || help) && (
         <div
@@ -345,7 +370,7 @@ export default function App() {
                 position={g.walker.position}
                 active={g.catalog.active}
                 onSelect={(id) => {
-                  g.go(id);
+                  g.goUser(id);
                   setMapOpen(false);
                 }}
                 large

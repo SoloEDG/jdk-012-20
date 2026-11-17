@@ -42,6 +42,15 @@ export function approach(p: Point, target: Point, dt: number): Point {
 export function viewingPoint(p: Point, facing: number): Point {
   return { x: p.x + Math.sin(facing) * 2, z: p.z + Math.cos(facing) * 2 };
 }
+// 校验持久化的位置：超出展厅硬边界或不是有限数 → 数据不可靠，返回 null；
+// 落在墙体/展台的微调范围内 → 投影回可行走区域（布局可能已更新）。
+export function sanitizePoint(p: unknown): Point | null {
+  if (!p || typeof p !== "object") return null;
+  const { x, z } = p as Point;
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+  if (Math.abs(x) > 5.6 || Math.abs(z) > 7.6) return null;
+  return constrain({ x, z });
+}
 
 function blocked(a:Point,b:Point):boolean {
   for(let i=0;i<=80;i++) {const t=i/80;const x=a.x+(b.x-a.x)*t,z=a.z+(b.z-a.z)*t;

@@ -1,7 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import type { Point } from "../../../shared/types";
 import { approach, constrain } from "../lib/motion";
-export function useWalker(onPosition: (p: Point) => void) {
+export function useWalker(
+  onPosition: (p: Point) => void,
+  enabled?: React.RefObject<boolean>,
+  onUserInput?: () => void,
+) {
   const [position, setPosition] = useState<Point>({ x: 3, z: 6.5 });
   const positionRef = useRef(position);
   const target = useRef<Point | null>(null);
@@ -9,8 +13,11 @@ export function useWalker(onPosition: (p: Point) => void) {
   const yaw = useRef(0);
   const callback = useRef(onPosition);
   callback.current = onPosition;
+  const userInput = useRef(onUserInput);
+  userInput.current = onUserInput;
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      if (enabled && !enabled.current) return;
       if ((e.target as HTMLElement).closest("input,textarea,select")) return;
       if (
         [
@@ -27,6 +34,7 @@ export function useWalker(onPosition: (p: Point) => void) {
         e.preventDefault();
         keys.current.add(e.key.toLowerCase());
         target.current = null;
+        userInput.current?.();
       }
     };
     const up = (e: KeyboardEvent) => keys.current.delete(e.key.toLowerCase());
@@ -92,6 +100,14 @@ export function useWalker(onPosition: (p: Point) => void) {
     },
     stop: () => {
       target.current = null;
+    },
+    place: (p: Point, yawValue?: number) => {
+      target.current = null;
+      keys.current.clear();
+      positionRef.current = p;
+      setPosition(p);
+      if (typeof yawValue === "number") yaw.current = yawValue;
+      callback.current(p);
     },
   };
 }

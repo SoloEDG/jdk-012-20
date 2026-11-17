@@ -30,6 +30,19 @@ export type TourState = {
   step: number;
   phase: "idle" | "walking" | "listening" | "paused" | "done";
 };
+export type SessionSnapshot = {
+  version: 1;
+  savedAt: number;
+  space: { position: Point; yaw: number } | null;
+  activeId: string | null;
+  tour: { routeId: string; stopId: string; phase: TourState["phase"] } | null;
+  narration: {
+    artworkId: string;
+    segment: number;
+    segmentProgress: number;
+    rate: number;
+  } | null;
+};
 export type AudioState = {
   artworkId: string | null;
   elapsed: number;

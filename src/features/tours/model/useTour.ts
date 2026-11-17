@@ -27,5 +27,6 @@ export function useTour() {
     pause: () => setState((t) => ({ ...t, phase: "paused" })),
     resume: () => setState((t) => ({ ...t, phase: "walking" })),
     stop: () => setState(initial),
+    restore: (t: TourState) => setState(t),
   };
 }
